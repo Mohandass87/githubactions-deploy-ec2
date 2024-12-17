@@ -1,56 +1,43 @@
-name: CI/CD Pipeline
+name: EC2 Connectivity Test
 
 on:
   push:
     branches:
-      - main  # Trigger when code is pushed to the main branch
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
-    
+  test-ec2-connection:
+    runs-on: ubuntu-latest
+
     steps:
-    # Step 1: Checkout the code from the repository
-    - name: Checkout code
-      uses: actions/checkout@v2
-    
-    # Step 2: Set up SSH to deploy to EC2
-    - name: Set up SSH for EC2
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+     # Step 2: Add the EC2 private key to the SSH agent
+      - name: Add EC2 private key to SSH agent
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
 
-    # Step 3: Run a simple test script (for example, check if 'index.html' exists)
-    - name: Run test script
-      run: |
-        # Simple test to check if index.html exists in the repository
-        if [ ! -f "/var/www/html/index.html" ]; then
-          echo "Test failed: index.html not found."
-          exit 1
-        fi
-        echo "Test passed: index.html exists."
-    
-    # Step 4: Create .env file using GitHub Secrets (you can add more secrets as needed)
-    - name: Create .env file
-      run: |
-        echo "EC2_PUBLIC_IP=${{ secrets.EC2_PUBLIC_IP }}" > .env
-        echo "EC2_SSH_PRIVATE_KEY=${{ secrets.EC2_SSH_PRIVATE_KEY }}" >> .env
-        # Add other variables as necessary
-    
-    # Step 5: Deploy the code to the EC2 instance and copy the .env file
-    - name: Deploy code and copy .env to EC2
-      run: |
-        # Copy code and .env file to EC2 instance
-        scp -o StrictHostKeyChecking=no -r . ${{ secrets.EC2_SSH_PRIVATE_KEY }}@${{ secrets.EC2_PUBLIC_IP }}:/home/${{ secrets.EC2_SSH_PRIVATE_KEY }}/app
-        scp -o StrictHostKeyChecking=no .env ${{ secrets.EC2_SSH_PRIVATE_KEY }}@${{ secrets.EC2_PUBLIC_IP }}:/home/${{ secrets.EC2_SSH_PRIVATE_KEY }}/app/.env
+      # Step 3: Test the SSH connection to EC2 instance
+      - name: Test SSH connection to EC2
+        run: |
+          echo "Testing SSH connection to EC2 instance..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa devops@${{ secrets.EC2_PUBLIC_IP }} "echo 'Connection successful!'"   
 
-        # SSH into EC2 instance and restart Nginx or any necessary services
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_PRIVATE_KEY }}@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-          cd /home/${{ secrets.EC2_SSH_PRIVATE_KEY }}/app
-          # Restart Nginx (adjust if using a different service)
-          sudo systemctl restart nginx
-          # For Node.js apps, you might want to use pm2 restart app
-          # pm2 restart app
-        EOF
+      #Step 4: Run a simple test script
+      
+      - name: Run a simple test script
+        run: |
+          echo "Running test script..."
+          # Example: Check if index.html exists
+          if [ ! -f "/var/www/html/index.html" ]; then
+            echo "Test failed: index.html not found."
+            exit 1
+          fi
+          echo "Test passed: index.html exists."
