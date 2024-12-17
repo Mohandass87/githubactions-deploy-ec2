@@ -41,3 +41,14 @@ jobs:
             exit 1
           fi
           echo "Test passed: index.html exists."
+      # Step 5: Copy new index.html from the repository to EC2 instance
+      - name: Copy new index.html to EC2
+        run: |
+          echo "Copying new index.html to EC2 instance..."
+          scp -o StrictHostKeyChecking=no ./index.html devops@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/index.html
+
+      # Step 6: Restart Nginx to apply the changes
+      - name: Restart Nginx on EC2
+        run: |
+          echo "Restarting Nginx on EC2 instance..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa devops@${{ secrets.EC2_PUBLIC_IP }} "sudo systemctl restart nginx"
