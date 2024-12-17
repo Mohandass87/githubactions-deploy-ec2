@@ -28,4 +28,4 @@ jobs:
       - name: Test SSH connection to EC2
         run: |
           echo "Testing SSH connection to EC2 instance..."
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa devops@${{ secrets.EC2_PUBLIC_IP }} "echo 'Connection successful!'"   
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_PUBLIC_IP }} "echo 'Connection successful!'"   
